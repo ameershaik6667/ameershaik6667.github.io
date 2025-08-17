@@ -5,72 +5,170 @@
   <title>TRF — Transformer + XGBoost Stock Prediction</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="description" content="Transformer + XGBoost pipeline for next-day stock movement with CrewAI decisioning and backtesting." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#ffffff; --ink:#0f172a; --muted:#475569; --accent:#0ea5e9; --border:#e2e8f0;
-      --card:#ffffff; --code:#0b1020; --chip:#eef2ff;
+      --bg0:#0b1220;
+      --bg1:#0f172a;
+      --ink:#e5e7eb;
+      --ink-soft:#cbd5e1;
+      --surface:#0b1020cc; /* translucent for header */
+      --card:#0f172a;      /* card background */
+      --card-alt:#0b1220;
+      --border:#1f2937;
+      --accent:#22d3ee;
+      --accent-2:#a78bfa;
+      --muted:#94a3b8;
+      --chip:#111827;
+      --chip-ink:#c7d2fe;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius:16px;
+      --radius-sm:12px;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",Arial,"Apple Color Emoji","Segoe UI Emoji"}
-    a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
-    .wrap{max-width:1000px;margin:0 auto;padding:32px 20px}
-    header{display:grid;gap:8px;margin-bottom:24px}
-    h1{margin:0;font-size:clamp(24px,3.5vw,36px);line-height:1.15}
-    p.lead{margin:0;color:var(--muted)}
-    .section{margin:28px 0;padding:20px;border:1px solid var(--border);border-radius:14px;background:var(--card)}
-    h2{margin:0 0 12px 0;font-size:clamp(18px,2.4vw,22px)}
-    .grid{display:grid;gap:14px}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font:16px/1.55 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",Arial;
+      color:var(--ink);
+      /* layered background: soft grid + radial glows + gradient */
+      background:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+        radial-gradient(60% 60% at 10% 10%, rgba(34,211,238,0.12), transparent 60%),
+        radial-gradient(50% 50% at 90% 15%, rgba(167,139,250,0.12), transparent 65%),
+        linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 100%);
+      background-size: 24px 24px, 24px 24px, auto, auto, auto;
+      background-position: top left, top left, center, center, center;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+
+    /* Top bar */
+    .top{
+      position:sticky; top:0; z-index:10;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 16px; margin:10px auto 24px; max-width:1120px;
+      background:var(--surface); backdrop-filter: blur(8px);
+      border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);
+    }
+    .brand{display:flex;gap:10px;align-items:center}
+    .logo{
+      width:32px;height:32px;border-radius:8px;
+      background: radial-gradient(100% 100% at 50% 0%, var(--accent) 0%, var(--accent-2) 100%);
+      box-shadow: 0 6px 18px rgba(34,211,238,.35), inset 0 0 25px rgba(167,139,250,.25);
+    }
+    .brand h1{font-size:18px;margin:0}
+    .nav a{margin-left:14px;padding:6px 10px;border-radius:8px;background:transparent;border:1px solid transparent}
+    .nav a:hover{background:#0b122033;border-color:var(--border);text-decoration:none}
+
+    header.hero{
+      padding:28px; border-radius:var(--radius); border:1px solid var(--border);
+      background:linear-gradient(180deg, #0b1226 0%, #0e162b 100%); box-shadow:var(--shadow);
+    }
+    .hero h2{font-size:clamp(22px,3vw,30px);margin:0 0 8px}
+    .lead{margin:0 0 8px;color:var(--ink-soft)}
+    .links a{margin-right:12px}
+
+    .section{
+      margin:24px 0; padding:22px; border:1px solid var(--border);
+      background:linear-gradient(180deg, var(--card) 0%, var(--card-alt) 100%);
+      border-radius:var(--radius); box-shadow:var(--shadow);
+    }
+    h3{margin:0 0 14px;font-size:clamp(18px,2.2vw,22px)}
+    .grid{display:grid; gap:14px}
     .grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-    .kpi{display:flex;gap:10px;align-items:center}
-    .chip{display:inline-block;padding:4px 10px;border-radius:999px;background:var(--chip);font-size:12px}
+
+    ul{margin:0;padding-left:18px}
+    li{margin:6px 0;color:var(--ink-soft)}
+
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .chip{padding:4px 10px;border-radius:999px;background:var(--chip);color:var(--chip-ink);font-size:12px;border:1px solid var(--border)}
+
     table{width:100%;border-collapse:collapse;font-size:14px}
     th,td{padding:10px;border-bottom:1px solid var(--border);vertical-align:top}
     th{text-align:left;color:var(--muted);font-weight:600}
-    tbody tr:hover{background:#fafafa}
-    code{background:#f8fafc;border:1px solid var(--border);padding:1px 6px;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-    img{max-width:100%;height:auto;border-radius:12px;border:1px solid var(--border)}
-    details{border:1px dashed var(--border);border-radius:12px;padding:14px;background:#fcfcff}
+    tbody tr:hover{background:#0b122e}
+
+    code{
+      background:#0b122e;border:1px solid var(--border);padding:2px 6px;border-radius:8px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace
+    }
+    figure{margin:0}
+    figcaption{color:var(--muted);font-size:13px;margin-top:6px}
+    img{max-width:100%;height:auto;border-radius:14px;border:1px solid var(--border)}
+
+    details{border:1px dashed var(--border);border-radius:12px;padding:14px;background:#0b122e}
     summary{cursor:pointer;font-weight:600}
-    .footer{margin-top:26px;color:var(--muted);font-size:13px}
-    .links a{margin-right:12px}
+
+    .footer{margin-top:26px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* Commit tag for monospace SHA */
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+
+    /* Small utility */
+    .muted{color:var(--muted)}
   </style>
 </head>
 <body>
+  <!-- Top bar -->
+  <div class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <h1>TRF — Transformer + XGBoost</h1>
+    </div>
+    <nav class="nav">
+      <a href="#overview">Overview</a>
+      <a href="#sprints">Sprints</a>
+      <a href="#artifacts">Artifacts</a>
+      <a href="#commits">Commits</a>
+      <a href="#run">How to Run</a>
+    </nav>
+  </div>
+
   <div class="wrap">
-    <header>
-      <h1>TRF — Transformer + XGBoost Stock Prediction</h1>
+
+    <header class="hero" id="overview">
+      <h2>Project & Contributions</h2>
       <p class="lead">
-        Project: end-to-end pipeline that learns temporal features from OHLCV with a Transformer, feeds embeddings to XGBoost to predict next-day movement, requests a CrewAI BUY/SELL/HOLD decision, and validates via backtesting.
+        End-to-end pipeline that learns temporal features from OHLCV with a Transformer, feeds embeddings to XGBoost to predict next-day movement, requests a CrewAI BUY/SELL/HOLD decision, and validates via backtesting.
       </p>
       <p class="lead">
-        My contributions (Sprints 2–4): data ingestion & windowing, Transformer model & embedding extraction, XGBoost training, inference JSON, CrewAI decision integration, backtesting implementation, and integration tests.
+        <strong>My scope (Sprints 2–4):</strong> data ingestion & windowing, Transformer model + embedding export, XGBoost training, inference JSON, CrewAI decision integration, backtesting implementation, and integration tests.
       </p>
       <div class="links">
         <a href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/tree/ameer-sprint4" target="_blank">Code Repository</a>
         <a href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commits/ameer-sprint4/?author=ameershaik6667" target="_blank">Commits</a>
       </div>
+      <div class="chips" aria-label="stack">
+        <span class="chip">PyTorch</span><span class="chip">XGBoost</span><span class="chip">pandas</span>
+        <span class="chip">yfinance</span><span class="chip">CrewAI</span><span class="chip">Backtesting</span>
+      </div>
     </header>
 
     <section class="section">
-      <h2>Architecture & Workflow</h2>
-      <div class="grid">
+      <h3>Architecture & Workflow</h3>
+      <div class="grid cols-2">
         <ul>
           <li><strong>Data</strong>: Fetch OHLCV via <code>yfinance</code>, impute/normalize, create 20-day sliding windows.</li>
-          <li><strong>Transformer</strong>: Self-attention encoder → 2-class logits for up/down; export logits as embeddings.</li>
+          <li><strong>Transformer</strong>: Self-attention encoder → 2-class logits (up/down); export logits as embeddings.</li>
           <li><strong>XGBoost</strong>: Train classifier on Transformer embeddings (grid-searched hyperparams) → <code>xgb_prob</code>.</li>
-          <li><strong>Inference</strong>: Return JSON <code>{"date","transformer_score","xgb_prob"}</code>.</li>
+          <li><strong>Inference</strong>: JSON <code>{"date","transformer_score","xgb_prob"}</code>.</li>
         </ul>
         <ul>
-          <li><strong>CrewAI</strong>: Map <code>xgb_prob</code> to BUY/SELL/HOLD (threshold rules + prompt logic).</li>
-          <li><strong>Backtesting</strong>: Generate daily signals and simulate long/short with transaction costs.</li>
-          <li><strong>Outputs</strong>: Console decision record + backtest metrics; charts (equity curve, predictions vs. actuals).</li>
+          <li><strong>CrewAI</strong>: Map <code>xgb_prob</code> to BUY/SELL/HOLD (thresholds + prompt logic).</li>
+          <li><strong>Backtesting</strong>: Daily signals → long/short sim with costs; compute Sharpe/return/drawdown.</li>
+          <li><strong>Outputs</strong>: Decision record + backtest metrics; charts (equity curve, predicted vs actual).</li>
           <li><strong>Perf</strong>: Inference target ≤ 5s/window; secure API calls; no notebooks required.</li>
         </ul>
       </div>
     </section>
 
-    <section class="section">
-      <h2>Summary of Sprint Objectives</h2>
+    <section class="section" id="sprints">
+      <h3>Summary of Sprint Objectives</h3>
       <table>
         <thead>
           <tr><th>Sprint</th><th>Objective</th><th>Outcome</th></tr>
@@ -93,10 +191,11 @@
           </tr>
         </tbody>
       </table>
+      <p class="muted" style="margin-top:8px">Task hour details are documented per sprint; full commit log linked above.</p>
     </section>
 
-    <section class="section">
-      <h2>Key Artifacts</h2>
+    <section class="section" id="artifacts">
+      <h3>Key Artifacts</h3>
       <div class="grid cols-2">
         <figure>
           <img src="1.jpg" alt="CrewAI recommendation output (BUY/SELL/HOLD)">
@@ -109,84 +208,74 @@
       </div>
     </section>
 
-    <section class="section">
-      <h2>Commits (Authored)</h2>
+    <section class="section" id="commits">
+      <h3>Commits (Authored)</h3>
       <table>
         <thead>
-          <tr><th>Date</th><th>SHA</th><th>Description</th><th>User Story</th><th>Task(s)</th></tr>
+          <tr><th>Date</th><th>SHA</th><th>Description</th></tr>
         </thead>
-        <tbody>
-          <!-- Sprint 2 -->
-          <tr>
-            <td>2025-06-22</td>
-            <td><a target="_blank" href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commit/a273bab868b6cad3bb731115ee041b77371e7996">a273bab</a></td>
-            <td>Adding Transformer model implementation and Embedding extraction</td>
-            <td>TRF #720</td>
-            <td>TRF.1, TRF.2</td>
-          </tr>
-          <tr>
-            <td>2025-06-22</td>
-            <td><a target="_blank" href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commit/1e0cd4847e7f8f6a48ea333986438718ef3763f0">1e0cd48</a></td>
-            <td>Adding embeddings</td>
-            <td>TRF #720</td>
-            <td>TRF.3</td>
-          </tr>
-          <!-- Sprint 3 -->
-          <tr>
-            <td>2025-07-13</td>
-            <td><a target="_blank" href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commit/957bbaf51bf08e55ca9b0ddc9ca809cc8d2dd037">957bbaf</a></td>
-            <td>TRF.4 and TRF.5 Add XGBoost training and end-to-end inference pipeline</td>
-            <td>TRF #720</td>
-            <td>TRF.4, TRF.5</td>
-          </tr>
-          <!-- Sprint 4 -->
-          <tr>
-            <td>2025-08-09</td>
-            <td><a target="_blank" href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commit/68414d3ffaae33cbdb801a656a2ceb1760afd1a2">68414d3</a></td>
-            <td>TRF Crew AI agents integrated</td>
-            <td>TRF #720</td>
-            <td>TRF.6</td>
-          </tr>
-          <tr>
-            <td>2025-08-09</td>
-            <td><a target="_blank" href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commit/7387bd6b1e6f76c7a62d943d9c0484d141537720">7387bd6</a></td>
-            <td>Add comments to the main code</td>
-            <td>TRF #720</td>
-            <td>TRF.6</td>
-          </tr>
-          <tr>
-            <td>2025-08-09</td>
-            <td><a target="_blank" href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commit/80639fa863e5f99b57a4773a5f0ed5cb1325bd31">80639fa</a></td>
-            <td>Adding TRF backtesting file</td>
-            <td>TRF #720</td>
-            <td>TRF.7, TRF.9</td>
-          </tr>
+        <tbody id="commits-body">
+          <tr><td colspan="3" class="muted">Loading commits…</td></tr>
         </tbody>
       </table>
-      <p class="footer">Full commit history is also available via the repository “Commits” link above.</p>
+      <p class="muted" style="margin-top:8px">Source: GitHub API (branch <code>ameer-sprint4</code>, author <code>ameershaik6667</code>).</p>
     </section>
 
-    <section class="section">
-      <h2>How to Run (High-Level)</h2>
+    <section class="section" id="run">
+      <h3>How to Run (High-Level)</h3>
       <ol>
-        <li>Create a Python env; install deps: <code>pandas</code>, <code>numpy</code>, <code>yfinance</code>, <code>torch</code>, <code>xgboost</code>, <code>scikit-learn</code>, <code>joblib</code>, and <code>crewai</code>/<code>langchain_openai</code>.</li>
+        <li>Create a Python env; install deps: <code>pandas</code>, <code>numpy</code>, <code>yfinance</code>, <code>torch</code>, <code>xgboost</code>, <code>scikit-learn</code>, <code>joblib</code>, <code>crewai</code>, <code>langchain_openai</code>.</li>
         <li>Train Transformer on 20-day windows; export logits as embeddings CSV; train/save XGBoost.</li>
         <li>Run inference: outputs <code>{"date","transformer_score","xgb_prob"}</code> and a CrewAI recommendation.</li>
-        <li>Run backtesting script to print Sharpe, total return, drawdown; view screenshots (1.jpg, 2.jpg) for sample outputs.</li>
+        <li>Run backtesting to print Sharpe, total return, drawdown; see <code>1.jpg</code> and <code>2.jpg</code> for sample outputs.</li>
       </ol>
     </section>
 
     <section class="section">
-      <h2>Appendix (for reviewers who want details)</h2>
+      <h3>Appendix (Scope & Acceptance, condensed)</h3>
       <details>
-        <summary>TRF User Story (scope & acceptance criteria)</summary>
-        <p>This project ingests OHLCV, trains a Transformer, extracts embeddings for XGBoost, emits an inference JSON, maps to BUY/SELL/HOLD via CrewAI, and backtests with metrics/visualizations. Acceptance covers clean data windowing, model convergence, correct embedding export, improved accuracy from XGBoost vs. baseline, ≤5s inference, correct decision mapping, and validated backtesting outputs.</p>
-        <p>Artifacts in code: <em>UI transformer/inference modules</em>, <em>embedding CSV</em>, <em>XGBoost model</em>, <em>CrewAI decision agent</em>, and <em>backtest script</em>.</p>
+        <summary>Click to expand</summary>
+        <p class="muted">
+          Ingest OHLCV, train Transformer, extract embeddings for XGBoost, emit inference JSON, map to BUY/SELL/HOLD via CrewAI, and backtest with metrics/visualizations. Acceptance covers clean data windowing, model convergence, correct embedding export, improved accuracy from XGBoost vs baseline, ≤5s inference, correct decision mapping, and validated backtesting outputs.
+        </p>
       </details>
     </section>
 
-    <p class="footer">© 2025 • TRF — built as part of AI-Agent-Stock-Prediction.</p>
+    <p class="footer">© 2025 • TRF — part of AI-Agent-Stock-Prediction</p>
   </div>
+
+  <script>
+    // Live commits table (keeps the page truthful & up to date)
+    const COMMITS_API = "https://api.github.com/repos/ameershaik6667/AI-Agent-Stock-Prediction/commits?sha=ameer-sprint4&author=ameershaik6667&per_page=100";
+    async function loadCommits(){
+      const tbody = document.getElementById('commits-body');
+      try{
+        const res = await fetch(COMMITS_API);
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const commits = await res.json();
+        if(!Array.isArray(commits) || !commits.length){
+          tbody.innerHTML = '<tr><td colspan="3" class="muted">No commits found for this filter.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = commits.map(c=>{
+          const sha = (c.sha||'').slice(0,7);
+          const date = new Date(c.commit.author.date).toISOString().slice(0,10);
+          const msg = (c.commit.message||'').split('\n')[0];
+          const url = c.html_url;
+          return `<tr>
+              <td>${date}</td>
+              <td class="mono"><a target="_blank" href="${url}">${sha}</a></td>
+              <td>${escapeHtml(msg)}</td>
+            </tr>`;
+        }).join('');
+      }catch(e){
+        tbody.innerHTML = `<tr><td colspan="3" class="muted">Could not load commits (${e.message}). See the <a target="_blank" href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/commits/ameer-sprint4/?author=ameershaik6667">commits page</a>.</td></tr>`;
+      }
+    }
+    function escapeHtml(s){
+      return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    loadCommits();
+  </script>
 </body>
 </html>
-
