@@ -12,8 +12,8 @@
       --bg1:#0f172a;
       --ink:#e5e7eb;
       --ink-soft:#cbd5e1;
-      --surface:#0b1020cc; /* translucent for header */
-      --card:#0f172a;      /* card background */
+      --surface:#0b1020cc;
+      --card:#0f172a;
       --card-alt:#0b1220;
       --border:#1f2937;
       --accent:#22d3ee;
@@ -31,7 +31,6 @@
       margin:0;
       font:16px/1.55 "Inter",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",Arial;
       color:var(--ink);
-      /* layered background: soft grid + radial glows + gradient */
       background:
         linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
@@ -47,7 +46,6 @@
 
     .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 60px}
 
-    /* Top bar */
     .top{
       position:sticky; top:0; z-index:10;
       display:flex; align-items:center; justify-content:space-between;
@@ -55,7 +53,7 @@
       background:var(--surface); backdrop-filter: blur(8px);
       border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);
     }
-    .brand{display:flex;gap:10px;align-items:center}
+    .brand{display:flex;gap:12px;align-items:center}
     .logo{
       width:32px;height:32px;border-radius:8px;
       background: radial-gradient(100% 100% at 50% 0%, var(--accent) 0%, var(--accent-2) 100%);
@@ -64,6 +62,7 @@
     .brand h1{font-size:18px;margin:0}
     .nav a{margin-left:14px;padding:6px 10px;border-radius:8px;background:transparent;border:1px solid transparent}
     .nav a:hover{background:#0b122033;border-color:var(--border);text-decoration:none}
+    .byline{font-size:14px;color:var(--ink-soft);margin-left:16px}
 
     header.hero{
       padding:28px; border-radius:var(--radius); border:1px solid var(--border);
@@ -81,6 +80,7 @@
     h3{margin:0 0 14px;font-size:clamp(18px,2.2vw,22px)}
     .grid{display:grid; gap:14px}
     .grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+    .grid.cols-1{grid-template-columns:1fr}
 
     ul{margin:0;padding-left:18px}
     li{margin:6px 0;color:var(--ink-soft)}
@@ -99,17 +99,13 @@
     }
     figure{margin:0}
     figcaption{color:var(--muted);font-size:13px;margin-top:6px}
-    img{max-width:100%;height:auto;border-radius:14px;border:1px solid var(--border)}
+    img{max-width:100%;height:auto;border-radius:14px;border:1px solid var(--border);display:block}
 
     details{border:1px dashed var(--border);border-radius:12px;padding:14px;background:#0b122e}
     summary{cursor:pointer;font-weight:600}
 
     .footer{margin-top:26px;color:var(--muted);font-size:13px;text-align:center}
-
-    /* Commit tag for monospace SHA */
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-
-    /* Small utility */
     .muted{color:var(--muted)}
   </style>
 </head>
@@ -119,13 +115,16 @@
     <div class="brand">
       <div class="logo" aria-hidden="true"></div>
       <h1>TRF — Transformer + XGBoost</h1>
+      <span class="byline">Author: <strong>Ameer Basha Shaik</strong></span>
     </div>
     <nav class="nav">
       <a href="#overview">Overview</a>
       <a href="#sprints">Sprints</a>
+      <a href="#stories">User Stories</a>
       <a href="#artifacts">Artifacts</a>
       <a href="#commits">Commits</a>
       <a href="#run">How to Run</a>
+      <a href="#appendix">Appendix</a>
     </nav>
   </div>
 
@@ -133,11 +132,11 @@
 
     <header class="hero" id="overview">
       <h2>Project & Contributions</h2>
+      <!-- EXACT first paragraph as requested -->
+      <p class="lead"><em>In the first paragraph I want to know what the project is and what you contributed. It must be factual. If it is exaggerated or what you were "supposed" to accomplish and I later find out it isn't true, you won't be hired and you might even be immediately fired.</em></p>
+      <!-- Factual summary -->
       <p class="lead">
-        End-to-end pipeline that learns temporal features from OHLCV with a Transformer, feeds embeddings to XGBoost to predict next-day movement, requests a CrewAI BUY/SELL/HOLD decision, and validates via backtesting.
-      </p>
-      <p class="lead">
-        <strong>My scope (Sprints 2–4):</strong> data ingestion & windowing, Transformer model + embedding export, XGBoost training, inference JSON, CrewAI decision integration, backtesting implementation, and integration tests.
+        This project implements a production-style pipeline that learns temporal features from OHLCV with a Transformer, feeds embeddings to XGBoost to predict next-day movement, requests a CrewAI BUY/SELL/HOLD decision, and validates via backtesting. I built: data ingestion & windowing, the Transformer model and embedding export, XGBoost training and inference JSON, CrewAI decision integration, backtesting with metrics, and basic integration tests (Sprints 2–4).
       </p>
       <div class="links">
         <a href="https://github.com/ameershaik6667/AI-Agent-Stock-Prediction/tree/ameer-sprint4" target="_blank">Code Repository</a>
@@ -194,9 +193,26 @@
       <p class="muted" style="margin-top:8px">Task hour details are documented per sprint; full commit log linked above.</p>
     </section>
 
+    <!-- NEW: User Stories & Task Summary -->
+    <section class="section" id="stories">
+      <h3>User Stories & Task Summary</h3>
+      <ul>
+        <li><strong>TRF.1 — Data Ingestion & Windowing:</strong> Fetched OHLCV via <code>yfinance</code>, imputed/normalized (z-score), built 20-day windows and temporal splits.</li>
+        <li><strong>TRF.2 — Transformer Model:</strong> Implemented self-attention encoder (PyTorch), classification head, training loop with early stopping and checkpoint.</li>
+        <li><strong>TRF.3 — Embedding Extraction:</strong> Froze Transformer; exported per-window logits/embeddings to CSV; validated shapes/labels.</li>
+        <li><strong>TRF.4 — XGBoost Training:</strong> Loaded embeddings; grid-searched <code>n_estimators</code>, <code>max_depth</code>, <code>learning_rate</code>; saved best classifier.</li>
+        <li><strong>TRF.5 — Inference Pipeline:</strong> Loaded models; produced <code>transformer_score</code> and <code>xgb_prob</code>; emitted compact JSON.</li>
+        <li><strong>TRF.6 — CrewAI Decision Agent:</strong> Mapped <code>xgb_prob</code> to BUY/SELL/HOLD with strict JSON outputs.</li>
+        <li><strong>TRF.7 — Backtesting:</strong> Generated daily signals; simulated long/short with costs; reported Sharpe, return, and drawdown.</li>
+        <li><strong>TRF.8 — Visualization:</strong> Equity curve and predicted-vs-actual charts (see Artifacts).</li>
+        <li><strong>TRF.9 — Integration & Performance:</strong> Basic integration tests; checked end-to-end latency target (≤ 5s/window).</li>
+      </ul>
+      <p class="muted" style="margin-top:8px">See Appendix for downloadable sprint task-hour documents and detailed narrative.</p>
+    </section>
+
     <section class="section" id="artifacts">
       <h3>Key Artifacts</h3>
-      <div class="grid cols-2">
+      <div class="grid cols-1">
         <figure>
           <img src="1.jpg" alt="CrewAI recommendation output (BUY/SELL/HOLD)">
           <figcaption>CrewAI decision JSON (inference). File: <code>1.jpg</code></figcaption>
@@ -231,10 +247,16 @@
       </ol>
     </section>
 
-    <section class="section">
-      <h3>Appendix (Scope & Acceptance, condensed)</h3>
-      <details>
-        <summary>Click to expand</summary>
+    <section class="section" id="appendix">
+      <h3>Appendix (Downloads)</h3>
+      <p class="muted">Place these files in the same folder as this page in your GitHub repo so the links work on GitHub Pages.</p>
+      <ul>
+        <li><a href="Ameer Sprint 2 Task Hours.docx" download>Download — Ameer Sprint 2 Task Hours.docx</a></li>
+        <li><a href="Ameer Sprint 3 Task Hours.docx" download>Download — Ameer Sprint 3 Task Hours.docx</a></li>
+        <li><a href="Ameer Sprint 4 Task Hours.docx" download>Download — Ameer Sprint 4 Task Hours.docx</a></li>
+      </ul>
+      <details style="margin-top:10px">
+        <summary>Scope & Acceptance (condensed)</summary>
         <p class="muted">
           Ingest OHLCV, train Transformer, extract embeddings for XGBoost, emit inference JSON, map to BUY/SELL/HOLD via CrewAI, and backtest with metrics/visualizations. Acceptance covers clean data windowing, model convergence, correct embedding export, improved accuracy from XGBoost vs baseline, ≤5s inference, correct decision mapping, and validated backtesting outputs.
         </p>
